@@ -57,7 +57,7 @@ async function run() {
     const database = client.db("RedLifeDB");
     const usersCollection = database.collection("users");
 
-    // save or update a users info in db
+    // save or update a users data in db
     app.post("/add-user", async (req, res) => {
       const userData = req.body;
       userData.role = "donor";
@@ -70,17 +70,58 @@ async function run() {
       const alreadyExists = await usersCollection.findOne(query);
       console.log("User already exists: ", !!alreadyExists);
       if (!!alreadyExists) {
-        console.log("Updating user data......");
+        // console.log("Updating user data......");
         const result = await usersCollection.updateOne(query, {
           $set: { last_loggedIn: new Date().toISOString() },
         });
         return res.send(result);
       }
 
-      console.log("Creating user data......");
+      // console.log("Creating user data......");
       //   console.log(userData);
       const result = await usersCollection.insertOne(userData);
       res.send(result);
+    });
+
+    // get user data by email
+    app.get("/user/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      try {
+        const user = await usersCollection.findOne({ email: email });
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        res.send(user);
+      } catch (err) {
+        res.status(500).send({ message: "Internal server error", error: err });
+      }
+    });
+
+    // update profile by email
+    app.put("/user/:email", verifyToken, async (req, res) => {
+      if (req.tokenEmail !== req.params.email) {
+        return res.status(403).send({ message: "Forbidden" });
+      }
+      const email = req.params.email;
+      const updatedData = req.body;
+
+      // no one can change this input so delete it from request
+      delete updatedData.email;
+      delete updatedData.role;
+      delete updatedData.status;
+
+      try {
+        const result = await usersCollection.updateOne(
+          { email },
+          { $set: updatedData }
+        );
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        res.send({ message: "User updated successfully" });
+      } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
+      }
     });
   } finally {
   }
