@@ -56,6 +56,32 @@ async function run() {
 
     const database = client.db("RedLifeDB");
     const usersCollection = database.collection("users");
+    const donationCollection = database.collection("Donation");
+
+    // verify active user;
+    const verifyActive = async (req, res, next) => {
+      try {
+        const email = req.tokenEmail;
+
+        if (!email) {
+          return res.status(401).send({ message: "Unauthorized" });
+        }
+
+        const user = await usersCollection.findOne({ email });
+        const isActive = user?.status === "active";
+
+        if (!isActive) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+
+        next();
+      } catch (error) {
+        console.error("verifyActive error:", error);
+        return res
+          .status(500)
+          .send({ message: "Server error", error: error.message });
+      }
+    };
 
     // save or update a users data in db
     app.post("/add-user", async (req, res) => {
@@ -68,7 +94,7 @@ async function run() {
         email: userData?.email,
       };
       const alreadyExists = await usersCollection.findOne(query);
-      console.log("User already exists: ", !!alreadyExists);
+      // console.log("User already exists: ", !!alreadyExists);
       if (!!alreadyExists) {
         // console.log("Updating user data......");
         const result = await usersCollection.updateOne(query, {
@@ -123,6 +149,30 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error", error });
       }
     });
+
+    // Create donate request
+    app.post(
+      "/create-donate-request",
+      verifyToken,
+      verifyActive,
+      async (req, res) => {
+        const donateRequest = req.body;
+
+        try {
+          const result = await donationCollection.insertOne({
+            ...donateRequest,
+            donationStatus: "pending",
+          });
+          return res.send(result);
+        } catch (error) {
+          console.error("Donation creation error:", error);
+          return res.status(500).send({
+            message: "Failed to create donation request",
+            error: error.message,
+          });
+        }
+      }
+    );
   } finally {
   }
 }
