@@ -57,6 +57,7 @@ async function run() {
     const database = client.db("RedLifeDB");
     const usersCollection = database.collection("users");
     const donationCollection = database.collection("Donation");
+    const fundsCollection = database.collection("Funds");
 
     // verify active user;
     const verifyActive = async (req, res, next) => {
@@ -230,6 +231,52 @@ async function run() {
         { $set: updatedData }
       );
       res.send(result);
+    });
+
+    // admin
+    // all user count -
+    app.get("/admin/users/count", async (req, res) => {
+      try {
+        const userCount = await usersCollection.countDocuments({
+          role: "donor",
+        });
+        res.send({ count: userCount });
+      } catch (error) {
+        console.log("Error fetching user count:", error);
+        res.status(500).send({ error: "Failed to fetch user count" });
+      }
+    });
+
+    // total funding count -
+    app.get("/admin/funding/total", async (req, res) => {
+      try {
+        const totalFunding = await fundsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $toDouble: "$fundAmount" } },
+              },
+            },
+          ])
+          .toArray();
+
+        res.send({ total: totalFunding[0]?.total || 0 });
+      } catch (error) {
+        console.log("Error fetching total funding:", error);
+        res.status(500).send({ error: "Failed to fetch total funding" });
+      }
+    });
+
+    // all donation-request count -
+    app.get("/admin/blood-requests/count", async (req, res) => {
+      try {
+        const requestCount = await donationCollection.countDocuments();
+        res.send({ count: requestCount });
+      } catch (error) {
+        console.log("Error fetching blood request count:", error);
+        res.status(500).send({ error: "Failed to fetch blood request count" });
+      }
     });
   } finally {
   }
