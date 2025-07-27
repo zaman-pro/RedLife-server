@@ -173,6 +173,40 @@ async function run() {
         }
       }
     );
+
+    // all-my-donation-count;
+    app.get("/all-my-donation-count", async (req, res) => {
+      const { status, email } = req.query;
+      const query = { requesterEmail: email };
+      if (status) query.donationStatus = status;
+      const count = await donationCollection.countDocuments(query);
+      res.send({ count });
+    });
+
+    // donation-request-all-my/:email
+    app.get("/my-all-donation-request/:email", async (req, res) => {
+      const email = req.params.email;
+      const { filter } = req.query;
+      const query = { requesterEmail: email };
+      if (filter) query.donationStatus = filter;
+      const skip = parseInt(req.query.skip) || 0;
+      const limit = parseInt(req.query.limit) || 0;
+      const requests = await donationCollection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      res.send(requests);
+    });
+
+    // donation-request/:id delete
+    app.delete("/donation-request/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await donationCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
   } finally {
   }
 }
