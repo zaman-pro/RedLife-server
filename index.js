@@ -59,6 +59,57 @@ async function run() {
     const donationCollection = database.collection("Donation");
     const fundsCollection = database.collection("Funds");
 
+    // use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      try {
+        const email = req.tokenEmail;
+
+        if (!email) {
+          return res.status(401).send({ message: "Unauthorized" });
+        }
+
+        const user = await usersCollection.findOne({ email });
+        const isAdmin = user?.role === "admin";
+
+        if (!isAdmin) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+
+        next();
+      } catch (error) {
+        console.error("verifyAdmin error:", error);
+        return res
+          .status(500)
+          .send({ message: "Server error", error: error.message });
+      }
+    };
+
+    // use verify Volunteer after verifyToken
+    const verifyVolunteer = async (req, res, next) => {
+      try {
+        const email = req.tokenEmail;
+
+        if (!email) {
+          return res.status(401).send({ message: "Unauthorized" });
+        }
+
+        const user = await usersCollection.findOne({ email });
+        const isVolunteerOrAdmin =
+          user?.role === "volunteer" || user?.role === "admin";
+
+        if (!isVolunteerOrAdmin) {
+          return res.status(403).send({ message: "Forbidden access" });
+        }
+
+        next();
+      } catch (error) {
+        console.error("verifyVolunteer error:", error);
+        return res
+          .status(500)
+          .send({ message: "Server error", error: error.message });
+      }
+    };
+
     // verify active user;
     const verifyActive = async (req, res, next) => {
       try {
@@ -277,6 +328,55 @@ async function run() {
         console.log("Error fetching blood request count:", error);
         res.status(500).send({ error: "Failed to fetch blood request count" });
       }
+    });
+
+    // all-users get
+    app.get("/all-users", async (req, res) => {
+      const { status } = req.query;
+      const skip = parseInt(req.query.skip) || 0;
+      const limit = parseInt(req.query.limit) || 0;
+      const query = status ? { status } : {};
+      const users = await usersCollection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      res.send(users);
+    });
+
+    // only total user count
+    app.get("/all-users-count", async (req, res) => {
+      const { status } = req.query;
+      const query = status ? { status } : {};
+      const count = await usersCollection.countDocuments(query);
+      res.send({ count });
+    });
+
+    // patch request for user status update by admin only ;
+    app.patch(
+      "/user/:id/status",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const status = req.body.status;
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status } }
+        );
+        res.send(result);
+      }
+    );
+
+    // patch request for user role update by admin only ;
+    app.patch("/user/:id/role", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const role = req.body.role;
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role } }
+      );
+      res.send(result);
     });
   } finally {
   }
