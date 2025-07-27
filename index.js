@@ -378,6 +378,48 @@ async function run() {
       );
       res.send(result);
     });
+
+    // all donation request count ;
+    app.get("/all-donation-count", async (req, res) => {
+      const { status } = req.query;
+      const query = {};
+      if (status) query.donationStatus = status;
+      const count = await donationCollection.countDocuments(query);
+      res.send({ count });
+    });
+
+    app.get("/all-blood-donation-request", async (req, res) => {
+      try {
+        const { filter, sort, skip, limit } = req.query;
+
+        // Building query object
+        const query = {};
+        if (filter) query.donationStatus = filter;
+
+        // Sorting logic
+        const sorting = {};
+        if (sort === "asc" || sort === "desc") {
+          sorting.donationDate = sort === "asc" ? 1 : -1;
+        }
+
+        // Ensure skip and limit are valid numbers
+        const skipValue = Number(skip) >= 0 ? Number(skip) : 0;
+        const limitValue = Number(limit) > 0 ? Number(limit) : 0;
+
+        // Fetch data from MongoDB
+        const requests = await donationCollection
+          .find(query)
+          .sort(sorting)
+          .skip(skipValue)
+          .limit(limitValue)
+          .toArray();
+
+        res.status(200).send(requests);
+      } catch (error) {
+        console.error("Error fetching donation requests:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
   } finally {
   }
 }
