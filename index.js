@@ -207,6 +207,30 @@ async function run() {
       });
       res.send(result);
     });
+
+    // Get donate requests by email & limit
+    app.get("/donation-request", async (req, res) => {
+      const email = req.query.email;
+      const query = {
+        requesterEmail: email,
+      };
+      const requests = await donationCollection.find(query).limit(3).toArray();
+      res.send(requests);
+    });
+
+    // donation-request/:id update with put;
+    app.put("/donation-request/:id", async (req, res) => {
+      const id = req.params.id;
+      const { donationStatus, donorEmail, donorName } = req.body;
+      const updatedData = { donationStatus };
+      if (donorEmail) updatedData.donorEmail = donorEmail;
+      if (donorEmail) updatedData.donorName = donorName;
+      const result = await donationCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+      );
+      res.send(result);
+    });
   } finally {
   }
 }
