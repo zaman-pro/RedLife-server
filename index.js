@@ -430,6 +430,44 @@ async function run() {
       res.send(blogs);
     });
 
+    // all blog count ;
+    app.get("/all-blogs-count", async (req, res) => {
+      const { status } = req.query;
+      const query = {};
+      if (status) query.status = status;
+      const count = await blogCollection.countDocuments(query);
+      res.send({ count });
+    });
+
+    app.get("/all-blogs", async (req, res) => {
+      try {
+        const { status, sort, skip, limit } = req.query;
+
+        const query = {};
+        if (status) query.status = status;
+
+        const sorting = {};
+        if (sort === "asc" || sort === "desc") {
+          sorting.createdAt = sort === "asc" ? 1 : -1;
+        }
+
+        const skipValue = Math.max(0, Number(skip) || 0);
+        const limitValue = Math.max(0, Number(limit) || 0);
+
+        const blogs = await blogCollection
+          .find(query)
+          .sort(sorting)
+          .skip(skipValue)
+          .limit(limitValue)
+          .toArray();
+
+        res.status(200).send(blogs);
+      } catch (error) {
+        console.error("Error fetching blogs:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
     // get blogs-published;
     app.get("/blogs-published", async (req, res) => {
       const query = { status: "published" };
