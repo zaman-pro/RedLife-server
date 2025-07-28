@@ -58,6 +58,7 @@ async function run() {
     const usersCollection = database.collection("users");
     const donationCollection = database.collection("Donation");
     const fundsCollection = database.collection("Funds");
+    const blogCollection = database.collection("Blogs");
 
     // use verify admin after verifyToken
     const verifyAdmin = async (req, res, next) => {
@@ -419,6 +420,56 @@ async function run() {
         console.error("Error fetching donation requests:", error);
         res.status(500).json({ message: "Internal Server Error" });
       }
+    });
+
+    // get blogs;
+    app.get("/blogs", verifyToken, verifyVolunteer, async (req, res) => {
+      const { status } = req.query;
+      const query = status ? { status } : {};
+      const blogs = await blogCollection.find(query).toArray();
+      res.send(blogs);
+    });
+
+    // get blogs-published;
+    app.get("/blogs-published", async (req, res) => {
+      const query = { status: "published" };
+      const blogs = await blogCollection.find(query).toArray();
+      res.send(blogs);
+    });
+
+    // Post a blog;
+    app.post("/blogs", async (req, res) => {
+      const blog = req.body;
+      const result = await blogCollection.insertOne({
+        ...blog,
+        status: "draft",
+      });
+      res.send(result);
+    });
+
+    // get blog by id;
+    app.get("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const blog = await blogCollection.findOne({ _id: new ObjectId(id) });
+      res.send(blog);
+    });
+
+    // delete blog;
+    app.delete("/blog/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const result = await blogCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    // patch blog status;
+    app.patch("/blogs/:id", verifyToken, verifyVolunteer, async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const result = await blogCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status } }
+      );
+      res.send(result);
     });
   } finally {
   }
