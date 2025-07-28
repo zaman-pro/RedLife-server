@@ -331,6 +331,18 @@ async function run() {
       }
     });
 
+    // get donor by filter query
+    app.get("/donors/search", async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+      const query = {};
+      if (bloodGroup) query.bloodGroup = bloodGroup;
+      if (district) query.district = district;
+      if (upazila) query.upazila = upazila;
+      if (Object.keys(query).length === 0) return res.send([]);
+      const donors = await usersCollection.find(query).toArray();
+      res.send(donors);
+    });
+
     // all-users get
     app.get("/all-users", async (req, res) => {
       const { status } = req.query;
