@@ -139,6 +139,32 @@ async function run() {
       }
     };
 
+    // get total Funds Count;
+    app.get("/founds-counts", async (req, res) => {
+      const count = await fundsCollection.estimatedDocumentCount();
+      res.send({ count });
+    });
+
+    // get funds
+    app.get("/funds", verifyToken, async (req, res) => {
+      const skip = parseInt(req.query.skip) || 0;
+      const limit = parseInt(req.query.limit) || 0;
+
+      try {
+        const funds = await fundsCollection
+          .find()
+          .sort({ date: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+
+        res.send(funds);
+      } catch (error) {
+        console.error("Error fetching funds:", error);
+        res.status(500).send({ error: "Failed to fetch funds" });
+      }
+    });
+
     // create-payment-intent route
     app.post(
       "/create-payment-intent",
@@ -151,8 +177,7 @@ async function run() {
           return res.status(400).send({ error: "Invalid amount" });
         }
 
-        const amountInCents = parseInt(amount * 100); // stripe e paisa dewa lage
-
+        const amountInCents = parseInt(amount * 100);
         try {
           const paymentIntent = await stripe.paymentIntents.create({
             amount: amountInCents,
@@ -183,7 +208,7 @@ async function run() {
         donorName,
         fundAmount,
         transactionId,
-        date: new Date().toISOString(),
+        fundDate: new Date().toISOString(),
       };
 
       try {
