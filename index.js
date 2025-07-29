@@ -15,6 +15,9 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -135,6 +138,83 @@ async function run() {
           .send({ message: "Server error", error: error.message });
       }
     };
+
+    // create-payment-intent route
+    app.post(
+      "/create-payment-intent",
+      verifyToken,
+      verifyActive,
+      async (req, res) => {
+        const { amount } = req.body;
+
+        if (!amount || isNaN(amount)) {
+          return res.status(400).send({ error: "Invalid amount" });
+        }
+
+        const amountInCents = parseInt(amount * 100); // stripe e paisa dewa lage
+
+        try {
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: amountInCents,
+            currency: "usd",
+            payment_method_types: ["card"],
+          });
+
+          res.send({
+            clientSecret: paymentIntent.client_secret,
+          });
+        } catch (err) {
+          console.error(err);
+          res.status(500).send({ error: "Payment intent creation failed" });
+        }
+      }
+    );
+
+    // save fund info after successful payment
+    app.post("/funds", verifyToken, verifyActive, async (req, res) => {
+      const { donorEmail, donorName, fundAmount, transactionId } = req.body;
+
+      if (!donorEmail || !donorName || !fundAmount || !transactionId) {
+        return res.status(400).send({ message: "Missing required fields" });
+      }
+
+      const fundEntry = {
+        donorEmail,
+        donorName,
+        fundAmount,
+        transactionId,
+        date: new Date().toISOString(),
+      };
+
+      try {
+        const result = await fundsCollection.insertOne(fundEntry);
+        res.send(result);
+      } catch (error) {
+        console.error("Error saving fund:", error);
+        res.status(500).send({ error: "Failed to save fund data" });
+      }
+    });
+
+    // total funding count -
+    app.get("/admin/funding/total", async (req, res) => {
+      try {
+        const totalFunding = await fundsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $toDouble: "$fundAmount" } },
+              },
+            },
+          ])
+          .toArray();
+
+        res.send({ total: totalFunding[0]?.total || 0 });
+      } catch (error) {
+        console.log("Error fetching total funding:", error);
+        res.status(500).send({ error: "Failed to fetch total funding" });
+      }
+    });
 
     // save or update a users data in db
     app.post("/add-user", async (req, res) => {
@@ -352,27 +432,6 @@ async function run() {
       } catch (error) {
         console.log("Error fetching user count:", error);
         res.status(500).send({ error: "Failed to fetch user count" });
-      }
-    });
-
-    // total funding count -
-    app.get("/admin/funding/total", async (req, res) => {
-      try {
-        const totalFunding = await fundsCollection
-          .aggregate([
-            {
-              $group: {
-                _id: null,
-                total: { $sum: { $toDouble: "$fundAmount" } },
-              },
-            },
-          ])
-          .toArray();
-
-        res.send({ total: totalFunding[0]?.total || 0 });
-      } catch (error) {
-        console.log("Error fetching total funding:", error);
-        res.status(500).send({ error: "Failed to fetch total funding" });
       }
     });
 
