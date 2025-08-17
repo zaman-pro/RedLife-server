@@ -4,7 +4,7 @@ This is the backend API for the RedLife blood donation platform. Built with Node
 
 ## 📌 API Base URL
 
-🛠️ `https://a12-red-life-server-side.vercel.app`
+🛠️ `https://redlife-server.vercel.app`
 
 ## 🔐 Admin Access (Client Login)
 
@@ -23,4 +23,3 @@ This is the backend API for the RedLife blood donation platform. Built with Node
 8. 🌐 **CORS Configured** — Secure cross-origin resource sharing configured for the frontend.
 9. 🧪 **Robust Error Handling** — Returns proper status codes and error messages for all routes.
 10. 🧾 **MongoDB Integration** — All data stored in a structured, normalized schema.
-
