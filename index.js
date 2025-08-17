@@ -667,7 +667,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("A12-RedLife-server-side Running");
+  res.send("RedLife-server Running");
 });
 
 app.listen(port, () => {
